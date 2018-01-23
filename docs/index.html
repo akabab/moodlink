@@ -1,62 +1,55 @@
 <html>
-
-<head>
- <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
-</head>
-
 <body>
- <p>This example shows how to post an image to the Project Oxford Emotion API using a binary file</p>
- <input type="file" id="filename" name="filename">
- <button id="btn">Click here</button>
- <h2>Camera</h2>
- <input type="file" name="image" accept="image/*" capture="camera" />
+  <h2>MoodLink</h2>
+  <input type='file' id='file' multiple>
+  <button onclick='sendImages()'>Send</button>
+  <button onclick='getCSV()'>Get CSV</button>
 
- <h2>Emotions</h2>
- <ul id="scores"></ul>
+  <script type='text/javascript'>
+    const apiKey = 'fbaebc54c4784496b7f6f2ca426f82c8'
+    const apiUrl = 'https://westus.api.cognitive.microsoft.com/emotion/v1.0/recognize'
 
-<script type="text/javascript">
- //apiKey: Replace this with your own Project Oxford Emotion API key, please do not use my key. I include it here so you can get up and running quickly but you can get your own key for free at https://www.projectoxford.ai/emotion
- var apiKey = "fbaebc54c4784496b7f6f2ca426f82c8";
+    const headers = {
+      'Ocp-Apim-Subscription-Key': apiKey,
+      'Content-Type': 'application/octet-stream',
+    }
 
- //apiUrl: The base URL for the API. Find out what this is for other APIs via the API documentation
- var apiUrl = "https://westus.api.cognitive.microsoft.com/emotion/v1.0/recognize";
+    let csv = 'anger,contempt,disgust,fear,happiness,neutral,sadness,surprise'
 
- $('#btn').click(function () {
- //file: The file that will be sent to the api
- var file = document.getElementById('filename').files[0];
+    function sendImages() {
+      const files = document.getElementById('file').files
 
- CallAPI(file, apiUrl, apiKey);
-});
+      Array.from(files).forEach(sendImage)
+    }
 
- function CallAPI(file, apiUrl, apiKey)
- {
-   $.ajax({
-     url: apiUrl,
-     beforeSend: function (xhrObj) {
-       xhrObj.setRequestHeader("Content-Type", "application/octet-stream");
-       xhrObj.setRequestHeader("Ocp-Apim-Subscription-Key", apiKey);
-     },
-     type: "POST",
-     data: file,
-     processData: false
-   })
-   .done(function (response) {
-     ProcessResult(response);
-   })
-   .fail(function (error) {
-     $("#response").text(error.getAllResponseHeaders());
-   });
- }
+    function sendImage(image) {
+      const options = {
+        method: 'POST',
+        headers,
+        processData: false,
+        body: image
+      }
 
-function ProcessResult(data) {
-  var scores = data[0].scores;
-  var scoresList = $('#scores');
+      fetch(apiUrl, options)
+      .then(res => res.json())
+      .then(data => {
+        console.log('data', data)
+        const scores = data[0].scores
 
-  for(var prop in scores) {
-    scoresList.append("<li> " + prop + ": " + scores[prop] + "</li>")
-  }
-}
-</script>
+        const s = Object.values(scores).join(',')
+
+        csv = [csv, s].join('\n')
+      })
+    }
+
+    function getCSV() {
+      const e = document.createElement('a');
+
+      e.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv)
+      e.target = '_blank'
+      e.download = 'moods.csv'
+      e.click()
+    }
+  </script>
 </body>
-
 </html>
