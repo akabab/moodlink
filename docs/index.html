@@ -36,7 +36,7 @@
         console.log('data', data)
         const scores = data[0].scores
 
-        const s = Object.values(scores).join(',')
+        const s = Object.values(scores).join(';')
 
         csv = [csv, s].join('\n')
       })
