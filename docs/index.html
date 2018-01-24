@@ -5,6 +5,7 @@
     <meta charset='utf-8' />
   </head>
   <body>
+    <h2>MoodLink</h2>
     <script type='text/javascript'> // CONSTANTS
       const SPREADSHEET_ID = '1Cn4IwLBy4owrRIq7Fr7MyPEBJtPDf7Mkqqf27ldu_NI'
       const SPREADSHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}`
@@ -12,26 +13,32 @@
 
     <p>Google Sheets API</p>
     <div id='auth-wrapper'>
-      <button id='signin-button' style='display: none;'>Sign In</button>
-      <button id='signout-button' style='display: none;'>Sign Out</button>
+      <button id='auth-signin' style='display: none;'>Sign In</button>
+      <div id='auth-signout' style='display: none;'>
+        <button >Sign Out</button>
+        <span id='auth-user'></span>
+      </div>
+
     </div>
 
     <div id='content' style='display: none;'>
-      <h2>Analysis</h2>
+      <h3>Analysis</h3>
       <input type='file' id='file' multiple>
-      <button onclick='sendImages()'>Send</button>
+      <button onclick='sendImages()'>Analyze</button>
+      <input id='upload-checkbox' type='checkbox' checked>
+      <label for='upload-checkbox'>Upload results to google <a id='results-sheet-link' target='_blank'>sheet</a> document</label>
       <div id='results-wrapper'>
-        <h4>Results</h4>
-        <a id='results-sheet-link'>sheet</a>
+        <h3>Results</h3>
         <ul id='results'></ul>
       </div>
     </div>
 
     <script type='text/javascript'>
-      const signinButton = document.getElementById('signin-button')
-      const signoutButton = document.getElementById('signout-button')
+      const signinButton = document.getElementById('auth-signin')
+      const signoutButton = document.getElementById('auth-signout')
       const contentElement = document.getElementById('content')
       const resultsElement = document.getElementById('results')
+      const uploadCheckboxElement = document.getElementById('upload-checkbox')
 
       /**
        *  On load, called to load the auth2 library and API client library.
@@ -79,6 +86,8 @@
           contentElement.style.display = 'block'
 
           const user = getCurrentUser()
+          document.getElementById('auth-user').innerHTML = `Connected as '${user.name}'`
+
           console.log(`${user.name} logged in`, user)
         } else {
           signinButton.style.display = 'block'
@@ -115,7 +124,7 @@
         gapi.auth2.getAuthInstance().signOut()
       }
 
-      function pushValues(values) {
+      function pushValuesToSpreadsheet(values) {
         const params = {
           spreadsheetId: '1Cn4IwLBy4owrRIq7Fr7MyPEBJtPDf7Mkqqf27ldu_NI',
           range: 'Sheet1!A1:H',
@@ -164,21 +173,20 @@
         fetch(apiUrl, options)
         .then(res => {
           if (res.status >= 400 && res.status < 600) {
-            appendResultMessage(`✗ ${image.name} - err: ${res.statusText}`)
+            appendResultMessage(`✗ [${image.name}] - err: ${res.statusText}`)
             throw new Error(res.statusText)
           }
 
           return res.json()
         })
         .then(data => {
-
           if (data.length === 0) {
-            appendResultMessage(`✗ ${image.name} - err: no face detected`)
+            appendResultMessage(`✗ [${image.name}] - err: no face detected`)
             return
           }
 
           if (data.length > 1) {
-            appendResultMessage(`✗ ${image.name} - err: multiple faces detected`)
+            appendResultMessage(`✗ [${image.name}] - err: multiple faces detected`)
             return
           }
 
@@ -187,8 +195,11 @@
           const user = getCurrentUser()
           const values = [ now, user.name, image.name, ...Object.values(scores) ]
 
-          pushValues(values)
-          appendResultMessage(`✓ ${image.name} - face detected & sent to sheet`)
+          if (uploadCheckboxElement.checked) {
+            pushValuesToSpreadsheet(values)
+          }
+
+          appendResultMessage(`✓ [${image.name}] - face detected`)
         })
         .catch(error => console.log('Error:', error))
       }
