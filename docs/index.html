@@ -58,7 +58,6 @@
           discoveryDocs: DISCOVERY_DOCS,
           scope: SCOPES
         }).then(function (response) {
-          console.log('logged')
           // Listen for sign-in state changes.
           gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus)
 
@@ -131,8 +130,6 @@
         const request = gapi.client.sheets.spreadsheets.values.append(params, valueRangeBody)
         request.then(function(response) {
           console.log(response.result)
-
-
         }, function(reason) {
           console.error('error: ' + reason.result.error.message)
         })
@@ -187,7 +184,8 @@
 
           const scores = data[0].scores
           const now = new Date().toISOString()
-          const values = [ now, image.name, ...Object.values(scores) ]
+          const user = getCurrentUser()
+          const values = [ now, user.name, image.name, ...Object.values(scores) ]
 
           pushValues(values)
           appendResultMessage(`✓ ${image.name} - face detected & sent to sheet`)
