@@ -5,26 +5,41 @@
     <meta charset='utf-8' />
   </head>
   <body>
-    <p>Google Sheets API</p>
-    <button id="authorize-button" style="display: none;">Sign In</button>
-    <button id="signout-button" style="display: none;">Sign Out</button>
+    <script type='text/javascript'> // CONSTANTS
+      const SPREADSHEET_ID = '1Cn4IwLBy4owrRIq7Fr7MyPEBJtPDf7Mkqqf27ldu_NI'
+      const SPREADSHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}`
+    </script>
 
-    <pre id="content" style="display: none;">
+    <p>Google Sheets API</p>
+    <div id='auth-wrapper'>
+      <button id='signin-button' style='display: none;'>Sign In</button>
+      <button id='signout-button' style='display: none;'>Sign Out</button>
+    </div>
+
+    <div id='content' style='display: none;'>
       <h2>Analysis</h2>
       <input type='file' id='file' multiple>
       <button onclick='sendImages()'>Send</button>
-    </pre>
+      <div id='results-wrapper'>
+        <h4>Results</h4>
+        <a id='results-sheet-link'>sheet</a>
+        <ul id='results'></ul>
+      </div>
+    </div>
 
-    <script type="text/javascript">
-      const signinButton = document.getElementById('authorize-button');
-      const signoutButton = document.getElementById('signout-button');
-      const contentElement = document.getElementById('content');
+    <script type='text/javascript'>
+      const signinButton = document.getElementById('signin-button')
+      const signoutButton = document.getElementById('signout-button')
+      const contentElement = document.getElementById('content')
+      const resultsElement = document.getElementById('results')
 
       /**
        *  On load, called to load the auth2 library and API client library.
        */
       function handleClientLoad() {
-        gapi.load('client:auth2', initClient);
+        gapi.load('client:auth2', initClient)
+
+        document.getElementById('results-sheet-link').href = SPREADSHEET_URL
       }
 
       /**
@@ -32,25 +47,26 @@
        *  listeners.
        */
       function initClient() {
-        const CLIENT_ID = '1037868213592-i3h4bqtu3nom3sca8jmh1golkq0tu47l.apps.googleusercontent.com';
-        const API_KEY = 'AIzaSyB9lOTIYjdFzca5N-d2iQswHAok_JAsPEQ';
-        const DISCOVERY_DOCS = ["https://sheets.googleapis.com/$discovery/rest?version=v4"];
-        const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
+        const CLIENT_ID = '1037868213592-i3h4bqtu3nom3sca8jmh1golkq0tu47l.apps.googleusercontent.com'
+        const API_KEY = 'AIzaSyB9lOTIYjdFzca5N-d2iQswHAok_JAsPEQ'
+        const DISCOVERY_DOCS = ['https://sheets.googleapis.com/$discovery/rest?version=v4']
+        const SCOPES = 'https://www.googleapis.com/auth/spreadsheets'
 
         gapi.client.init({
           apiKey: API_KEY,
           clientId: CLIENT_ID,
           discoveryDocs: DISCOVERY_DOCS,
           scope: SCOPES
-        }).then(function () {
+        }).then(function (response) {
+          console.log('logged')
           // Listen for sign-in state changes.
-          gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
+          gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus)
 
           // Handle the initial sign-in state.
-          updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
-          signinButton.onclick = handleAuthClick;
-          signoutButton.onclick = handleSignoutClick;
-        });
+          updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get())
+          signinButton.onclick = handleAuthClick
+          signoutButton.onclick = handleSignoutClick
+        })
       }
 
       /**
@@ -59,13 +75,30 @@
        */
       function updateSigninStatus(isSignedIn) {
         if (isSignedIn) {
-          signinButton.style.display = 'none';
-          signoutButton.style.display = 'block';
-          contentElement.style.display = 'block';
+          signinButton.style.display = 'none'
+          signoutButton.style.display = 'block'
+          contentElement.style.display = 'block'
+
+          const user = getCurrentUser()
+          console.log(`${user.name} logged in`, user)
         } else {
-          signinButton.style.display = 'block';
-          signoutButton.style.display = 'none';
-          contentElement.style.display = 'none';
+          signinButton.style.display = 'block'
+          signoutButton.style.display = 'none'
+          contentElement.style.display = 'none'
+        }
+      }
+
+      function getCurrentUser() {
+        const currentUser = gapi.auth2.getAuthInstance().currentUser.get()
+        const profile = currentUser.getBasicProfile()
+
+        return {
+          email: profile.getEmail(),
+          familyName: profile.getFamilyName(),
+          givenName: profile.getGivenName(),
+          id: profile.getId(),
+          imageUrl: profile.getImageUrl(),
+          name: profile.getName(),
         }
       }
 
@@ -73,19 +106,17 @@
        *  Sign in the user upon button click.
        */
       function handleAuthClick(event) {
-        gapi.auth2.getAuthInstance().signIn();
+        gapi.auth2.getAuthInstance().signIn()
       }
 
       /**
        *  Sign out the user upon button click.
        */
       function handleSignoutClick(event) {
-        gapi.auth2.getAuthInstance().signOut();
+        gapi.auth2.getAuthInstance().signOut()
       }
 
       function pushValues(values) {
-        console.log('PUSH')
-
         const params = {
           spreadsheetId: '1Cn4IwLBy4owrRIq7Fr7MyPEBJtPDf7Mkqqf27ldu_NI',
           range: 'Sheet1!A1:H',
@@ -97,28 +128,28 @@
           'values': [ values ]
         }
 
-        var request = gapi.client.sheets.spreadsheets.values.append(params, valueRangeBody);
+        const request = gapi.client.sheets.spreadsheets.values.append(params, valueRangeBody)
         request.then(function(response) {
-          console.log(response.result);
-        }, function(reason) {
-          console.error('error: ' + reason.result.error.message);
-        })
+          console.log(response.result)
 
-        // gapi.client.sheets.spreadsheets.values.get({
-        //   spreadsheetId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
-        //   range: 'Class Data!A2:E',
-        // }).then(function(response) {
+
+        }, function(reason) {
+          console.error('error: ' + reason.result.error.message)
+        })
       }
     </script>
 
     <script type='text/javascript'> // Microsoft Emotion API
       function sendImages() {
         const files = document.getElementById('file').files
+        // TODO: error handling
 
+        clearResults()
         Array.from(files).forEach(sendImage)
       }
 
       function sendImage(image) {
+        console.log('processing.. ', image.name)
         const apiKey = 'fbaebc54c4784496b7f6f2ca426f82c8'
         const apiUrl = 'https://westus.api.cognitive.microsoft.com/emotion/v1.0/recognize'
         const headers = {
@@ -134,14 +165,45 @@
         }
 
         fetch(apiUrl, options)
-        .then(res => res.json())
+        .then(res => {
+          if (res.status >= 400 && res.status < 600) {
+            appendResultMessage(`✗ ${image.name} - err: ${res.statusText}`)
+            throw new Error(res.statusText)
+          }
+
+          return res.json()
+        })
         .then(data => {
+
+          if (data.length === 0) {
+            appendResultMessage(`✗ ${image.name} - err: no face detected`)
+            return
+          }
+
+          if (data.length > 1) {
+            appendResultMessage(`✗ ${image.name} - err: multiple faces detected`)
+            return
+          }
+
           const scores = data[0].scores
           const now = new Date().toISOString()
-          const values = [ now, ...Object.values(scores) ]
+          const values = [ now, image.name, ...Object.values(scores) ]
 
           pushValues(values)
+          appendResultMessage(`✓ ${image.name} - face detected & sent to sheet`)
         })
+        .catch(error => console.log('Error:', error))
+      }
+
+      function appendResultMessage(message) {
+        const li = document.createElement('li')
+        const text = document.createTextNode(message)
+        li.appendChild(text)
+        resultsElement.appendChild(li)
+      }
+
+      function clearResults() {
+        resultsElement.innerHTML = ''
       }
     </script>
 
